@@ -26,25 +26,30 @@ class NewTransformer():
 
 
 
-    def  use_pegasus(self, text):
-        model = AutoModelForSeq2SeqLM.from_pretrained(self.model_checkpoint)
-        tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
+    def _preprocess(self, set_of_text):
+        return mask_rank_texts(set_of_text, tokenizer=self.tokenizer)
 
-        inputs_dict = tokenizer(text, padding=True, return_tensors="pt", truncation=True)
+    def  use_pegasus(self, set_of_text):
+        model = AutoModelForSeq2SeqLM.from_pretrained(self.model_checkpoint)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
+
+        masked_dataset = self._preprocess(set_of_text)
+
+        inputs_dict = self.tokenizer(masked_dataset, padding=True, return_tensors="pt", truncation=True)
         input_ids = inputs_dict.input_ids
         attention_mask = inputs_dict.attention_mask
 
         predicted_summary_ids = model.generate(input_ids, attention_mask=attention_mask)
 
-        return tokenizer.batch_decode(predicted_summary_ids,
+        return self.tokenizer.batch_decode(predicted_summary_ids,
                                       max_length=self.max_target_length, skip_special_tokens=True)
 
 
-    def use_longformer(self, text,
+    def use_longformer(self, set_of_text,
                        attention_mode='sliding_chunks'):
 
         model = LEDForConditionalGeneration.from_pretrained(self.model_checkpoint)
-        tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
         config = model.config
         # choose the attention mode 'n2', 'tvm' or 'sliding_chunks'
         # 'n2': for regular n2 attention
@@ -52,8 +57,9 @@ class NewTransformer():
         # 'sliding_chunks': a PyTorch implementation of our sliding window attention
         config.attention_mode = attention_mode
 
+        masked_dataset = self._preprocess(set_of_text)
 
-        inputs_dict = tokenizer(text, padding=True,  return_tensors="pt", truncation=True)
+        inputs_dict = self.tokenizer(masked_dataset, padding=True,  return_tensors="pt", truncation=True)
         input_ids = inputs_dict.input_ids
         attention_mask = inputs_dict.attention_mask
         global_attention_mask = torch.zeros_like(attention_mask)
@@ -64,5 +70,5 @@ class NewTransformer():
         predicted_summary_ids = model.generate(input_ids,
                                                attention_mask=attention_mask,
                                                global_attention_mask=global_attention_mask)
-        return tokenizer.batch_decode(predicted_summary_ids,
+        return self.tokenizer.batch_decode(predicted_summary_ids,
                                       max_length=self.max_target_length, skip_special_tokens=True)
