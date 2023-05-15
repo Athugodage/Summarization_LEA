@@ -30,9 +30,7 @@ class NewTransformer():
 
 
 
-def  use_pegasus(text, model_checkpoint='google/pegasus-xsum',
-              tokenizer=tokenizer,
-              ):
+def  use_pegasus(text, model_checkpoint='google/pegasus-xsum'):
 
     MODEL_CKPT = 'google/pegasus-xsum'
     model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_CKPT)
